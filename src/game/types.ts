@@ -26,12 +26,25 @@ export interface Trait {
   values: Record<string, TraitValue>
 }
 
+export interface Look {
+  coat: string
+  skin: string
+  hair?: string
+  hat?: boolean
+  cap?: boolean
+  scarf?: string
+  glasses?: boolean
+  mustache?: boolean
+  beard?: boolean
+  bun?: boolean // пучок волос
+}
+
 export interface Suspect {
   id: string
   name: string
   role: string
   traits: Record<string, string> // traitId → значение
-  look?: { coat: string; skin: string; hair?: string; hat?: boolean; cap?: boolean } // портрет
+  look?: Look // портрет
 }
 
 export interface Witness {
@@ -42,6 +55,7 @@ export interface Witness {
   silence?: number // вероятность промолчать
   rumors?: boolean // отвечает, даже если сам ничего не видел
   wrongTime?: boolean // путает, когда это было
+  look?: Look
 }
 
 export interface Crime {
@@ -62,6 +76,7 @@ export interface CityPack {
   witnesses: Witness[]
   crimes: Crime[]
   rumors: string[] // {d} — название района
+  newspaper: string // название местной газеты
 }
 
 // Состояние партии
@@ -72,6 +87,8 @@ export interface Entry {
   round: number
   icon: string
   district?: string
+  speaker?: string // имя свидетеля, если это его слова
+  trail?: boolean // найдены следы беглеца
   title: string
   text: string
 }

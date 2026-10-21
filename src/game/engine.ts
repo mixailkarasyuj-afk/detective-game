@@ -197,9 +197,10 @@ export const applyAction = (s: GameState, a: Action): GameState => {
     const q = a.question ?? 'who'
     const { text, lied } = interrogate(s, a.district, q)
     if (lied && !next.lies.includes(w.name)) next.lies.push(w.name)
-    entry = { round: s.round, district: a.district, icon: '🗣', title: `${w.name}, ${name} · ${QUESTIONS[q]}`, text }
+    entry = { round: s.round, district: a.district, speaker: w.name, icon: '🗣', title: `${w.name}, ${name} · ${QUESTIONS[q]}`, text }
   } else if (a.kind === 'inspect') {
-    entry = { round: s.round, district: a.district, icon: '🔍', title: `Осмотр: ${name}`, text: inspect(s, a.district) }
+    const trail = here(s) === a.district || lastVisit(s, a.district) >= 0
+    entry = { round: s.round, district: a.district, trail, icon: '🔍', title: `Осмотр: ${name}`, text: inspect(s, a.district) }
     delete next.evidence[a.district]
   } else {
     if (a.movePatrolFrom) next.patrols = next.patrols.filter((p) => p !== a.movePatrolFrom)
