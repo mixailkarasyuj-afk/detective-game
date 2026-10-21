@@ -202,7 +202,8 @@
       "look": {
         "coat": "#3b3f4a",
         "hat": true,
-        "skin": "#e2b98f"
+        "skin": "#e2b98f",
+        "mustache": true
       }
     },
     {
@@ -217,7 +218,8 @@
       "look": {
         "coat": "#3d6fb0",
         "skin": "#f0c8a0",
-        "hair": "#9a9a9a"
+        "hair": "#9a9a9a",
+        "bun": true
       }
     },
     {
@@ -247,7 +249,8 @@
       "look": {
         "coat": "#b3352e",
         "skin": "#f3d2b3",
-        "hair": "#c47a2c"
+        "hair": "#c47a2c",
+        "scarf": "#e9e2cf"
       }
     },
     {
@@ -262,7 +265,8 @@
       "look": {
         "coat": "#2f3d33",
         "cap": true,
-        "skin": "#dcae86"
+        "skin": "#dcae86",
+        "mustache": true
       }
     }
   ],
@@ -272,19 +276,39 @@
       "name": "Вахтёрша",
       "character": "Путает время, но не лица",
       "lie": {},
-      "wrongTime": true
+      "wrongTime": true,
+      "look": {
+        "coat": "#6b4f7a",
+        "skin": "#efc9a6",
+        "hair": "#b8b8b8",
+        "bun": true,
+        "glasses": true
+      }
     },
     {
       "district": "rynok",
       "name": "Продавщица овощей",
       "character": "Наблюдательная и честная",
-      "lie": {}
+      "lie": {},
+      "look": {
+        "coat": "#3f7d4f",
+        "skin": "#e9b48c",
+        "hair": "#7a3b1f",
+        "scarf": "#d9a441"
+      }
     },
     {
       "district": "vokzal",
       "name": "Кассир",
       "character": "Педант, говорит только факты",
-      "lie": {}
+      "lie": {},
+      "look": {
+        "coat": "#2f4a6b",
+        "skin": "#f0cfae",
+        "hair": "#2a2420",
+        "glasses": true,
+        "cap": true
+      }
     },
     {
       "district": "port",
@@ -294,6 +318,13 @@
         "who": 0.5,
         "wear": 0.5,
         "where": 0.5
+      },
+      "look": {
+        "coat": "#2b5a73",
+        "skin": "#c98e62",
+        "hair": "#5a4a3a",
+        "beard": true,
+        "scarf": "#b3352e"
       }
     },
     {
@@ -303,6 +334,13 @@
       "lie": {
         "wear": 0.7,
         "who": 0.2
+      },
+      "look": {
+        "coat": "#6a5a44",
+        "skin": "#e7c09c",
+        "hair": "#e8e8e8",
+        "mustache": true,
+        "hat": true
       }
     },
     {
@@ -314,14 +352,26 @@
         "wear": 0.4,
         "where": 0.4
       },
-      "rumors": true
+      "rumors": true,
+      "look": {
+        "coat": "#9a4d8a",
+        "skin": "#f3d2b3",
+        "hair": "#3b2618",
+        "glasses": true
+      }
     },
     {
       "district": "promzona",
       "name": "Сторож склада",
       "character": "Молчун, отвечает через раз",
       "lie": {},
-      "silence": 0.5
+      "silence": 0.5,
+      "look": {
+        "coat": "#4a4a3a",
+        "skin": "#d4a27c",
+        "beard": true,
+        "cap": true
+      }
     },
     {
       "district": "naberezhnaya",
@@ -329,6 +379,13 @@
       "character": "Запоминает одежду до мелочей",
       "lie": {
         "where": 0.3
+      },
+      "look": {
+        "coat": "#c47a2c",
+        "skin": "#e9bf98",
+        "hair": "#1f1a17",
+        "scarf": "#3d6fb0",
+        "mustache": true
       }
     }
   ],
@@ -345,5 +402,6 @@
     "Таксист жалуется: подвозил нервного пассажира до района «{d}».",
     "В районе «{d}» под утро слышали, как кто-то тихо играл на скрипке.",
     "В районе «{d}» кто-то купил канифоль для смычка и расплатился наличными."
-  ]
+  ],
+  "newspaper": "Вестник Сонного Яра"
 }

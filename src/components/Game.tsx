@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type CSSProperties } from 'react'
 import {
   MAX_PATROLS,
   QUESTIONS,
@@ -16,9 +16,10 @@ import {
 } from '../game/engine'
 import type { CityPack, GameState, Question } from '../game/types'
 import { Portrait } from './Art'
+import type { Witness } from '../game/types'
 import { CityMap } from './CityMap'
 import { LINES, say } from '../game/lines'
-import { CommissarSays } from './Commissar'
+import { CommissarSays, Says } from './Commissar'
 
 const DISCUSSION_SECONDS = 90
 
@@ -46,30 +47,34 @@ export function Game({ pack, players, onExit }: Props) {
   const [done, setDone] = useState(0)
   const [mode, setMode] = useState<Mode>(null)
   const [crossed, setCrossed] = useState<string[]>([])
-  const [line, setLine] = useState(() => `${say('intro')} ${game.crime.text}`)
+  const [line, setLine] = useState<{ text: string; witness?: Witness }>(() => ({ text: `${say('intro')} ${game.crime.text}` }))
+  const [intro, setIntro] = useState(true)
 
   const finished = game.status !== 'playing'
   const roundEntries = game.log.filter((e) => e.round === game.round)
 
   const act = (a: Action, comment: keyof typeof LINES) => {
-    setGame(applyAction(game, a))
+    const next = applyAction(game, a)
+    setGame(next)
     setDone(done + 1)
     setMode(null)
-    setLine(say(comment))
+    const w = a.kind === 'interrogate' ? witnessIn(pack, a.district) : undefined
+    setLine(w ? { text: next.log[next.log.length - 1].text, witness: w } : { text: say(comment) })
   }
 
   const nextRound = () => {
     const next = endRound(game)
     setGame(next)
     setDone(0)
-    setLine(next.status === 'lost' ? say('lose') : say('roundStart'))
+    setLine({ text: next.status === 'lost' ? say('lose') : say('roundStart') })
+    setIntro(next.status === 'playing')
   }
 
   const confirmArrest = (suspect: string, district: string) => {
     const result = arrest(game, suspect, district)
     setGame(result)
     setMode(null)
-    setLine(result.status === 'won' ? say('win') : say('lose'))
+    setLine({ text: result.status === 'won' ? say('win') : say('lose') })
   }
 
   const restart = () => {
@@ -78,7 +83,8 @@ export function Game({ pack, players, onExit }: Props) {
     setDone(0)
     setMode(null)
     setCrossed([])
-    setLine(`${say('intro')} ${g.crime.text}`)
+    setLine({ text: `${say('intro')} ${g.crime.text}` })
+    setIntro(true)
   }
 
   const selectable = (d: string): boolean => {
@@ -128,6 +134,7 @@ export function Game({ pack, players, onExit }: Props) {
             crimeScene={game.crimeScene}
             patrols={game.patrols}
             marked={roundEntries.flatMap((e) => (e.district ? [e.district] : []))}
+            trails={game.log.flatMap((e) => (e.trail && e.district ? [e.district] : []))}
             revealPath={finished ? game.path.slice(0, game.round + 1) : undefined}
             selectable={selectable}
             onSelect={onMap}
@@ -135,7 +142,16 @@ export function Game({ pack, players, onExit }: Props) {
         </div>
 
         <div className="control-col">
-          <CommissarSays text={line} />
+          {line.witness ? (
+            <Says
+              avatar={<Portrait look={line.witness.look} size={72} />}
+              name={line.witness.name}
+              note={districtName(pack, line.witness.district)}
+              text={line.text}
+            />
+          ) : (
+            <CommissarSays text={line.text} />
+          )}
 
           {!finished && (
             <section className="turn">
@@ -232,29 +248,77 @@ export function Game({ pack, players, onExit }: Props) {
       </div>
 
       <section className="suspects">
-        <h3>Подозреваемые</h3>
-        <p className="muted">Нажмите на карточку, чтобы вычеркнуть.</p>
+        <h3>Досье подозреваемых</h3>
+        <p className="muted">Нажмите на досье, чтобы поставить штамп «Не он».</p>
         <ul>
-          {suspectsOf(game).map((p) => (
-            <li key={p.id}>
-              <button className={`suspect ${crossed.includes(p.id) ? 'is-crossed' : ''}`} onClick={() => toggleCross(p.id)}>
-                <Portrait suspect={p} />
-                <span className="suspect-text">
-                  <b>{p.name}</b>
-                  <span className="role">{p.role}</span>
-                  <span className="traits">
-                    {pack.traits.map((t) => (
-                      <span key={t.id} className="trait">
-                        {p.traits[t.id]}
-                      </span>
-                    ))}
+          {suspectsOf(game).map((p, i) => {
+            const isCulprit = finished && p.id === game.culpritId
+            const stamp = isCulprit ? (game.status === 'won' ? 'Арестован' : 'Виновен') : crossed.includes(p.id) ? 'Не он' : null
+            return (
+              <li key={p.id}>
+                <button
+                  className={`dossier ${crossed.includes(p.id) ? 'is-crossed' : ''} ${isCulprit ? 'is-culprit' : ''}`}
+                  style={{ '--tilt': `${((i * 7) % 5) - 2}deg` } as CSSProperties}
+                  onClick={() => toggleCross(p.id)}
+                  aria-pressed={crossed.includes(p.id)}
+                >
+                  <span className="clip" aria-hidden="true" />
+                  <span className="photo">
+                    <Portrait look={p.look} size={64} />
                   </span>
-                </span>
-              </button>
-            </li>
-          ))}
+                  <span className="dossier-text">
+                    <b>{p.name}</b>
+                    <span className="role">{p.role}</span>
+                    <span className="traits">
+                      {pack.traits.map((t) => (
+                        <span key={t.id} className="trait">
+                          <span className="trait-label">{t.label}</span> {p.traits[t.id]}
+                        </span>
+                      ))}
+                    </span>
+                  </span>
+                  {stamp && (
+                    <span className="stamp" key={stamp}>
+                      {stamp}
+                    </span>
+                  )}
+                </button>
+              </li>
+            )
+          })}
         </ul>
       </section>
+
+      {intro && !finished && <RoundIntro game={game} onClose={() => setIntro(false)} />}
+    </div>
+  )
+}
+
+function RoundIntro({ game, onClose }: { game: GameState; onClose: () => void }) {
+  return (
+    <div className="overlay" onClick={onClose}>
+      <article className="newspaper" onClick={(e) => e.stopPropagation()} role="dialog" aria-label={`Раунд ${game.round}`}>
+        <header className="masthead">
+          <span>Раунд {game.round} из {game.pack.rounds}</span>
+          <h2>{game.pack.newspaper}</h2>
+          <span>Цена 5 коп.</span>
+        </header>
+        {game.round === 1 && (
+          <p className="kicker">
+            Происшествие: {game.crime.title}. Место — {districtName(game.pack, game.crimeScene)}.
+          </p>
+        )}
+        <h3 className="headline">{game.rumor}</h3>
+        <p className="byline">Слухи с улиц. Редакция за достоверность не ручается.</p>
+        <div className="newspaper-foot">
+          <span>
+            Ведущий следователь: <b>{leadPlayer(game)}</b>
+          </span>
+          <button className="primary" onClick={onClose} autoFocus>
+            К делу
+          </button>
+        </div>
+      </article>
     </div>
   )
 }
@@ -321,9 +385,13 @@ function QuestionPicker({
   const w = witnessIn(pack, district)!
   return (
     <div className="question-picker">
-      <p>
-        <b>{w.name}</b>, {districtName(pack, district)}. <span className="character">«{w.character}»</span>
-      </p>
+      <div className="witness-head">
+        <Portrait look={w.look} size={52} />
+        <p>
+          <b>{w.name}</b>, {districtName(pack, district)}
+          <span className="character">{w.character}</span>
+        </p>
+      </div>
       <div className="question-buttons">
         {(Object.keys(QUESTIONS) as Question[]).map((q) => (
           <button key={q} onClick={() => onAsk(q)}>
@@ -380,9 +448,15 @@ function ArrestPanel({
 
 function Ending({ game, onRestart, onExit }: { game: GameState; onRestart: () => void; onExit: () => void }) {
   const won = game.status === 'won'
+  const c = culprit(game)
   return (
-    <section className={`ending ${won ? 'is-win' : 'is-loss'}`}>
-      <h2>{won ? 'Дело закрыто' : 'Преступник ушёл'}</h2>
+    <article className={`newspaper ending ${won ? 'is-win' : 'is-loss'}`}>
+      <header className="masthead">
+        <span>Экстренный выпуск</span>
+        <h2>{game.pack.newspaper}</h2>
+        <span>Раунд {game.round}</span>
+      </header>
+      <h3 className="headline">{won ? `Дело раскрыто! Под арестом: ${c.name}` : 'Преступник ушёл от погони'}</h3>
       {won && (
         <p className="stars" aria-label={`${game.stars} из 3 звёзд`}>
           {[1, 2, 3].map((i) => (
@@ -392,24 +466,29 @@ function Ending({ game, onRestart, onExit }: { game: GameState; onRestart: () =>
           ))}
         </p>
       )}
-      <p>{game.endReason}</p>
-      <p className="muted">
-        Преступник: {culprit(game).name}. Маршрут на карте показан красным:{' '}
-        {game.path
-          .slice(0, game.round + 1)
-          .map((id) => districtName(game.pack, id))
-          .join(' → ')}
-        .
-      </p>
-      <p className="muted">
-        {game.lies.length > 0 ? `Соврали или напутали: ${game.lies.join(', ')}.` : 'Никто из опрошенных не соврал.'}
-      </p>
+      <div className="ending-body">
+        <Portrait look={c.look} size={72} className="ending-photo" />
+        <div>
+          <p>{game.endReason}</p>
+          <p className="muted">
+            Маршрут беглеца:{' '}
+            {game.path
+              .slice(0, game.round + 1)
+              .map((id) => districtName(game.pack, id))
+              .join(' → ')}
+            .
+          </p>
+          <p className="muted">
+            {game.lies.length > 0 ? `Соврали или напутали: ${game.lies.join(', ')}.` : 'Никто из опрошенных не соврал.'}
+          </p>
+        </div>
+      </div>
       <div className="dialog-buttons">
         <button className="primary" onClick={onRestart}>
           Новое дело в этом городе
         </button>
-        <button onClick={onExit}>Ко всем делам</button>
+        <button onClick={onExit}>Ко всем городам</button>
       </div>
-    </section>
+    </article>
   )
 }

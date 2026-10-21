@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react'
-import { Backdrop } from './components/Art'
+import { Backdrop, TownPanorama } from './components/Art'
 import { CommissarSays } from './components/Commissar'
 import { Game } from './components/Game'
 import { MAX_PATROLS } from './game/engine'
@@ -69,6 +69,7 @@ function Home({ onPlay }: { onPlay: (pack: CityPack) => void }) {
           <span>20–40 минут</span>
           <span>играют все вместе</span>
         </p>
+        <TownPanorama />
         <CommissarSays text="Комиссар Громов, к вашим услугам. Я веду дело, говорю за свидетелей и слежу, чтобы никто не съел мои пирожки. Ваше дело — поймать преступника." />
       </header>
 
