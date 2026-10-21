@@ -55,25 +55,69 @@ function Home({ onPlay }: { onPlay: (pack: CityPack) => void }) {
     setCodeMessage(`Открыт город «${catalog.find((c) => c.id === packId)?.title}».`)
   }
 
+  const free = catalog.find((c) => c.price === 0)
+
   return (
     <div className="home">
       <header className="hero">
-        <p className="eyebrow">Детективная игра для компании за одним экраном</p>
-        <h1>Перехват</h1>
-        <p className="lead-text">
-          В городе совершено преступление, а вор уже петляет по улицам. Допрашивайте свидетелей, ищите улики,
-          расставляйте патрули и объявите арест, пока он не скрылся.
-        </p>
-        <p className="facts">
-          <span>3–8 игроков</span>
-          <span>20–40 минут</span>
-          <span>играют все вместе</span>
-        </p>
-        <TownPanorama />
+        <div className="hero-stage">
+          <TownPanorama />
+          <div className="hero-copy">
+            <p className="eyebrow">Детективная игра для всей компании</p>
+            <h1>Перехват</h1>
+            <p className="tagline">Город спит. Преступник — нет.</p>
+          </div>
+        </div>
+
+        <div className="hero-intro">
+          <div className="hero-text">
+            <p className="lede">
+              Ночью в тихом городке случилось дерзкое преступление. К утру вор растворился в переулках, и теперь у
+              вас есть несколько часов, три патруля и свидетели, которые путают, привирают и спорят друг с другом.
+            </p>
+            <p>
+              Соберитесь у одного экрана, сложите улики в одну картину и возьмите преступника, пока он не покинул
+              город. Ошибётесь с арестом — второго шанса не будет.
+            </p>
+            <div className="hero-actions">
+              <button className="primary big" onClick={() => free?.pack && onPlay(free.pack)}>
+                Открыть первое дело бесплатно
+              </button>
+              <a className="link-quiet" href="#how">
+                Как играть
+              </a>
+            </div>
+          </div>
+
+          <dl className="case-card">
+            <dt className="case-card-title">Карточка дела</dt>
+            <div>
+              <dt>Сыщиков</dt>
+              <dd>от 3 до 8</dd>
+            </div>
+            <div>
+              <dt>Время</dt>
+              <dd>20–40 минут</dd>
+            </div>
+            <div>
+              <dt>Устройство</dt>
+              <dd>один экран на всех</dd>
+            </div>
+            <div>
+              <dt>Ведёт дело</dt>
+              <dd>Комиссар Громов</dd>
+            </div>
+            <div>
+              <dt>Попыток ареста</dt>
+              <dd>одна</dd>
+            </div>
+          </dl>
+        </div>
+
         <CommissarSays text="Комиссар Громов, к вашим услугам. Я веду дело, говорю за свидетелей и слежу, чтобы никто не съел мои пирожки. Ваше дело — поймать преступника." />
       </header>
 
-      <section className="how">
+      <section className="how" id="how">
         <h2>Как играть</h2>
         <ol className="steps">
           <li>
