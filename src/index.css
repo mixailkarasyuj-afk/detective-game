@@ -1,0 +1,456 @@
+:root {
+  --bg: #15161a;
+  --panel: #1f2026;
+  --panel-2: #2a2b33;
+  --text: #ece7dc;
+  --muted: #9a958a;
+  --accent: #d9a441;
+  --danger: #d0574a;
+  --ok: #6fae6a;
+  --line: #3a3b44;
+  font-family: Georgia, 'Times New Roman', serif;
+  color: var(--text);
+  background: var(--bg);
+  line-height: 1.5;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+}
+
+h1,
+h2,
+h3 {
+  font-weight: normal;
+  letter-spacing: 0.02em;
+  margin: 0 0 0.5em;
+}
+
+button,
+input {
+  font: inherit;
+  font-family: system-ui, sans-serif;
+  font-size: 15px;
+}
+
+button {
+  background: var(--panel-2);
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 0.55em 1em;
+  cursor: pointer;
+}
+
+button:hover:not(:disabled) {
+  border-color: var(--accent);
+}
+
+button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+button.primary {
+  background: var(--accent);
+  color: #1a1408;
+  border-color: var(--accent);
+  font-weight: 600;
+}
+
+button.link {
+  background: none;
+  border: none;
+  color: var(--muted);
+  padding: 0.3em 0;
+}
+
+input {
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 0.55em 0.8em;
+}
+
+.muted {
+  color: var(--muted);
+  font-size: 0.9em;
+}
+
+/* Главная и витрина */
+
+.home,
+.setup {
+  max-width: 920px;
+  margin: 0 auto;
+  padding: 32px 16px 64px;
+}
+
+.hero {
+  padding: 32px 0 24px;
+  border-bottom: 1px solid var(--line);
+}
+
+.hero h1 {
+  font-size: clamp(48px, 10vw, 88px);
+  color: var(--accent);
+  margin: 0;
+}
+
+.eyebrow {
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  color: var(--muted);
+  font-size: 13px;
+  margin: 0;
+}
+
+.lead-text {
+  font-size: 1.2em;
+  max-width: 640px;
+}
+
+.facts {
+  color: var(--muted);
+}
+
+.how,
+.shop {
+  padding-top: 32px;
+}
+
+.how li {
+  margin-bottom: 0.4em;
+}
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+}
+
+.card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+}
+
+.card p {
+  flex: 1;
+  color: var(--muted);
+}
+
+.card-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.price {
+  font-size: 1.3em;
+  color: var(--accent);
+}
+
+.badge {
+  color: var(--ok);
+}
+
+.code-form {
+  margin-top: 24px;
+}
+
+.code-form label {
+  display: block;
+  margin-bottom: 6px;
+}
+
+.code-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* Подготовка */
+
+.players {
+  padding-left: 1.4em;
+}
+
+.players li {
+  margin-bottom: 8px;
+}
+
+.players input {
+  width: min(320px, 70vw);
+  margin-right: 8px;
+}
+
+.setup-start {
+  margin-top: 24px;
+}
+
+/* Игра */
+
+.game {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 12px 16px 48px;
+}
+
+.game-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 24px;
+  align-items: center;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--line);
+  font-family: system-ui, sans-serif;
+  font-size: 15px;
+}
+
+.game-bar .lead {
+  margin-left: auto;
+  color: var(--accent);
+}
+
+.case-card {
+  padding: 16px 0;
+}
+
+.case-card p {
+  margin: 0;
+  max-width: 900px;
+}
+
+.board {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+  gap: 24px;
+}
+
+@media (max-width: 860px) {
+  .board {
+    grid-template-columns: 1fr;
+  }
+}
+
+.city-map {
+  width: 100%;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+
+.road {
+  stroke: var(--line);
+  stroke-width: 1.2;
+}
+
+.escape-path {
+  fill: none;
+  stroke: var(--danger);
+  stroke-width: 1;
+  stroke-dasharray: 2 1.5;
+}
+
+.district circle {
+  fill: var(--panel-2);
+  stroke: var(--muted);
+  stroke-width: 0.6;
+}
+
+.district .label {
+  fill: var(--text);
+  font-size: 3.6px;
+  text-anchor: middle;
+  font-family: system-ui, sans-serif;
+}
+
+.district .icon {
+  font-size: 5px;
+  text-anchor: middle;
+  fill: var(--danger);
+}
+
+.district.is-scene circle {
+  stroke: var(--danger);
+  stroke-width: 1;
+}
+
+.district.is-patrol circle {
+  fill: #23324a;
+  stroke: #6d9ad8;
+}
+
+.district.is-marked circle {
+  stroke: var(--accent);
+  stroke-width: 1.2;
+}
+
+.district.is-selectable {
+  cursor: pointer;
+}
+
+.district.is-selectable circle {
+  fill: #3a3220;
+  stroke: var(--accent);
+}
+
+.district.is-selectable:hover circle,
+.district.is-selectable:focus circle {
+  fill: var(--accent);
+}
+
+.district:focus {
+  outline: none;
+}
+
+.actions {
+  margin-top: 16px;
+}
+
+.prompt {
+  margin: 0 0 8px;
+}
+
+.action-buttons {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 8px;
+}
+
+.action {
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.action.is-active {
+  border-color: var(--accent);
+  background: #3a3220;
+}
+
+.action-title {
+  font-weight: 600;
+}
+
+.action-hint {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.round-end {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.side-col section {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.notebook ol {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  max-height: 46vh;
+  overflow-y: auto;
+}
+
+.notebook li {
+  padding: 8px 0;
+  border-top: 1px solid var(--line);
+}
+
+.notebook li.is-new {
+  color: var(--accent);
+}
+
+.clue-meta {
+  display: block;
+  font-family: system-ui, sans-serif;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.suspects ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.suspect {
+  width: 100%;
+  text-align: left;
+}
+
+.suspect .traits {
+  display: block;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.suspect.is-crossed {
+  opacity: 0.4;
+  text-decoration: line-through;
+}
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgb(0 0 0 / 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.overlay.is-end {
+  background: none;
+  align-items: flex-end;
+  pointer-events: none;
+}
+
+.dialog {
+  pointer-events: auto;
+  background: var(--panel);
+  border: 1px solid var(--accent);
+  border-radius: 12px;
+  padding: 24px;
+  max-width: 560px;
+  width: 100%;
+  box-shadow: 0 12px 40px rgb(0 0 0 / 0.5);
+}
+
+.dialog.is-win h2 {
+  color: var(--ok);
+}
+
+.dialog.is-loss h2 {
+  color: var(--danger);
+}
+
+.accuse-list,
+.dialog-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
