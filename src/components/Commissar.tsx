@@ -1,3 +1,5 @@
+import type { ReactNode } from 'react'
+
 // Комиссар Громов — ведущий дела: зачитывает сводки и ворчит на решения команды.
 
 export function CommissarAvatar({ size = 72 }: { size?: number }) {
@@ -24,11 +26,18 @@ export function CommissarAvatar({ size = 72 }: { size?: number }) {
 }
 
 export function CommissarSays({ text }: { text: string }) {
+  return <Says avatar={<CommissarAvatar />} name="Комиссар Громов" text={text} />
+}
+
+export function Says({ avatar, name, note, text }: { avatar: ReactNode; name: string; note?: string; text: string }) {
   return (
     <div className="commissar">
-      <CommissarAvatar />
-      <div className="speech" key={text}>
-        <span className="speaker">Комиссар Громов</span>
+      <div className="avatar-wrap">{avatar}</div>
+      <div className="speech" key={name + text}>
+        <span className="speaker">
+          {name}
+          {note && <span className="speaker-note"> · {note}</span>}
+        </span>
         <p>{text}</p>
       </div>
     </div>
