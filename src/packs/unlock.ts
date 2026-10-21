@@ -2,12 +2,12 @@
 // Прототип: проверка в браузере. Перед запуском продаж её нужно перенести на сервер,
 // который выдаёт код после оплаты и проверяет его.
 
-const STORAGE_KEY = 'detective-game:unlocked'
+const STORAGE_KEY = 'perekhvat:unlocked'
 
 // SHA-256 от кода → id пакета
 const CODE_HASHES: Record<string, string> = {
-  '9471045d44f4b516a702b14719444a5eb86179444350d4073a41c9a0ee991c8b': 'port',
-  f80906b2596da63588022d3154aacd8ef91e8a68d1538d9d0383227f04785067: 'snow',
+  '9471045d44f4b516a702b14719444a5eb86179444350d4073a41c9a0ee991c8b': 'kamensk',
+  f80906b2596da63588022d3154aacd8ef91e8a68d1538d9d0383227f04785067: 'snezhnogorsk',
 }
 
 const sha256 = async (text: string): Promise<string> => {

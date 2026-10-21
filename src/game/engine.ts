@@ -1,10 +1,11 @@
-import type { ActionKind, CityPack, GameState } from './types'
+import type { ActionKind, CityPack, Entry, GameState, Question, Suspect, Witness } from './types'
 
-export const MAX_ROUNDS = 8
-export const MAX_PATROLS = 4
-const LIARS_PER_CASE = 3
+export const MAX_PATROLS = 3
+export const SUSPECTS_PER_CASE = 6
+const RUMOR_TRUTH = 0.6
 
 const pick = <T,>(items: T[]): T => items[Math.floor(Math.random() * items.length)]
+const chance = (p = 0) => Math.random() < p
 
 const shuffle = <T,>(items: T[]): T[] => {
   const a = [...items]
@@ -15,133 +16,221 @@ const shuffle = <T,>(items: T[]): T[] => {
   return a
 }
 
+const weightedPick = <T,>(items: { item: T; weight: number }[]): T => {
+  let r = Math.random() * items.reduce((sum, x) => sum + x.weight, 0)
+  for (const x of items) if ((r -= x.weight) <= 0) return x.item
+  return items[items.length - 1].item
+}
+
 export const neighbors = (pack: CityPack, id: string): string[] =>
   pack.roads.flatMap(([a, b]) => (a === id ? [b] : b === id ? [a] : []))
 
 export const districtName = (pack: CityPack, id: string): string =>
   pack.districts.find((d) => d.id === id)?.name ?? id
 
-export const roundsAgo = (n: number): string => {
-  if (n === 1) return 'раунд назад'
-  const mod10 = n % 10
-  const word = mod10 >= 2 && mod10 <= 4 && (n < 12 || n > 14) ? 'раунда' : 'раундов'
-  return `${n} ${word} назад`
-}
+export const witnessIn = (pack: CityPack, districtId: string): Witness | undefined =>
+  pack.witnesses.find((w) => w.district === districtId)
 
-export const currentPosition = (s: GameState): string => s.path[s.round]
+export const suspectsOf = (s: GameState): Suspect[] => s.pack.suspects.filter((p) => s.suspects.includes(p.id))
+
+export const culprit = (s: GameState): Suspect => s.pack.suspects.find((p) => p.id === s.culpritId)!
 
 export const leadPlayer = (s: GameState): string => s.players[(s.round - 1) % s.players.length]
 
-const moveFugitive = (s: GameState, from: string): string => {
-  const options = neighbors(s.pack, from).filter((d) => !s.patrols.includes(d))
+export const roundsAgo = (n: number): string => {
+  if (n <= 0) return 'только что'
+  if (n === 1) return 'раунд назад'
+  return `${n} ${n >= 2 && n <= 4 ? 'раунда' : 'раундов'} назад`
+}
+
+const here = (s: GameState): string => s.path[s.round]
+
+// Улики дела: одна называет примету (например, рост), остальные снимают подозрение
+// с каждого невиновного. Вместе они однозначно указывают на преступника,
+// а их не больше, чем подозреваемых — дело решается за 4–5 осмотров.
+const dealEvidence = (pack: CityPack, suspects: Suspect[], culpritId: string, scene: string) => {
+  const guilty = suspects.find((p) => p.id === culpritId)!
+  const cards: string[] = []
+  const positive = pack.traits.filter((t) => t.clue === 'positive')
+  const negative = pack.traits.filter((t) => t.clue === 'negative')
+  for (const t of positive) cards.push(t.values[guilty.traits[t.id]].clue)
+  for (const p of suspects) {
+    if (p.id === culpritId) continue
+    const t = pick(negative.filter((n) => p.traits[n.id] !== guilty.traits[n.id]))
+    cards.push(t.values[p.traits[t.id]].clue)
+  }
+  const districts = [scene, ...shuffle(pack.districts.map((d) => d.id).filter((id) => id !== scene))]
+  return Object.fromEntries(shuffle(cards).map((c, i) => [districts[i], c]))
+}
+
+// Беглец уходит от патрулей и от районов, где недавно были следователи, но не всегда.
+const moveFugitive = (s: GameState): string => {
+  const from = here(s)
+  const options = [from, ...neighbors(s.pack, from)].filter((d) => !s.patrols.includes(d))
   if (options.length === 0) return from
-  const fresh = options.filter((d) => !s.path.includes(d))
-  return pick(fresh.length > 0 ? fresh : options)
+  return weightedPick(
+    options.map((d) => {
+      const lastSeen = s.searchedAt[d] ?? -10
+      let weight = s.round - lastSeen <= 1 ? 0.25 : 1
+      if (d === from) weight *= 0.5
+      return { item: d, weight }
+    }),
+  )
+}
+
+const makeRumor = (s: GameState): string => {
+  const d = chance(RUMOR_TRUTH) ? here(s) : pick(s.pack.districts.map((x) => x.id).filter((id) => id !== here(s)))
+  return pick(s.pack.rumors).replace('{d}', districtName(s.pack, d))
+}
+
+const startRound = (s: GameState): GameState => {
+  const next = { ...s, path: [...s.path] }
+  next.path[s.round] = moveFugitive({ ...s, round: s.round - 1 })
+  next.rumor = makeRumor(next)
+  next.log = [...s.log, { round: s.round, icon: '📰', title: 'Слухи', text: next.rumor }]
+  return next
 }
 
 export const newGame = (pack: CityPack, players: string[]): GameState => {
-  const crimeScene = pick(pack.districts).id
-  const names = shuffle(pack.witnesses)
-  const witnessByDistrict = Object.fromEntries(pack.districts.map((d, i) => [d.id, names[i % names.length]]))
+  const crime = pick(pack.crimes)
+  const scene = crime.scene ?? pick(pack.districts).id
+  const suspects = shuffle(pack.suspects).slice(0, SUSPECTS_PER_CASE)
+  const culpritId = pick(suspects).id
   const state: GameState = {
     pack,
     players,
     round: 1,
-    crime: pick(pack.crimes),
-    crimeScene,
-    culpritId: pick(pack.suspects).id,
-    path: [crimeScene],
+    crime,
+    crimeScene: scene,
+    suspects: pack.suspects.filter((p) => suspects.includes(p)).map((p) => p.id),
+    culpritId,
+    path: [scene],
     patrols: [],
-    witnessByDistrict,
-    // Свидетель на месте преступления не врёт, иначе первая зацепка была бы ловушкой.
-    liarDistricts: shuffle(pack.districts.map((d) => d.id).filter((id) => id !== crimeScene)).slice(0, LIARS_PER_CASE),
-    clues: [],
+    evidence: dealEvidence(pack, suspects, culpritId, scene),
+    searched: [],
+    searchedAt: { [scene]: 0 },
+    lies: [],
+    rumor: '',
+    log: [],
     status: 'playing',
+    stars: 0,
   }
-  // Пока полиция едет на вызов, беглец успевает уйти на один район.
-  state.path.push(moveFugitive(state, crimeScene))
-  return state
+  return startRound(state)
 }
 
-export const culprit = (s: GameState) => s.pack.suspects.find((p) => p.id === s.culpritId)!
-
-const traitPhrase = (s: GameState, lie: boolean): string => {
-  const trait = pick(s.pack.traits)
-  const truth = culprit(s).traits[trait.id]
-  const value = lie ? pick(Object.keys(trait.values).filter((v) => v !== truth)) : truth
-  return trait.values[value]
-}
-
-// Последний раунд (до текущего), когда беглец был в районе, или -1.
-const lastVisit = (s: GameState, districtId: string): number => {
-  for (let t = s.round - 1; t >= 0; t--) if (s.path[t] === districtId) return t
+// Последний раунд (не считая текущего), когда беглец был в районе, или -1.
+const lastVisit = (s: GameState, d: string): number => {
+  for (let t = s.round - 1; t >= 0; t--) if (s.path[t] === d) return t
   return -1
 }
 
-const interrogate = (s: GameState, d: string): string => {
-  const lie = s.liarDistricts.includes(d)
-  const here = currentPosition(s)
-  const visit = lastVisit(s, d)
-  const wrongWay = () => districtName(s.pack, pick(neighbors(s.pack, d)))
+const otherSuspect = (s: GameState): Suspect => pick(suspectsOf(s).filter((p) => p.id !== s.culpritId))
 
-  if (here === d) {
-    return lie
-      ? `«Да был тут кто-то, побежал в сторону района «${wrongWay()}».» ${traitPhrase(s, true)}`
-      : `«Какой-то тип весь день здесь ошивается, будто прячется.» ${traitPhrase(s, false)}`
+const seenTrait = (s: GameState, q: 'who' | 'wear', lie: boolean): string => {
+  const trait = pick(s.pack.traits.filter((t) => t.question === q))
+  const person = lie ? otherSuspect(s) : culprit(s)
+  return trait.values[person.traits[trait.id]].seen
+}
+
+export const QUESTIONS: Record<Question, string> = {
+  who: 'Кого вы видели?',
+  wear: 'Во что он был одет?',
+  where: 'Куда он пошёл?',
+}
+
+const interrogate = (s: GameState, d: string, q: Question): { text: string; lied: boolean } => {
+  const w = witnessIn(s.pack, d)!
+  if (chance(w.silence)) return { text: '…Свидетель отмахнулся и промолчал.', lied: false }
+
+  const nowHere = here(s) === d
+  const visit = nowHere ? s.round : lastVisit(s, d)
+  const saw = visit >= 0
+  if (!saw && !w.rumors) return { text: '«Никого подозрительного я тут не видел.»', lied: false }
+
+  const lie = chance(w.lie[q])
+  if (q !== 'where') {
+    const intro = saw ? 'Видел' : 'Слышал от людей'
+    return { text: `«${intro}: ${seenTrait(s, q, lie).toLowerCase()}»`, lied: lie }
   }
-  if (visit >= 0) {
-    const went = lie ? wrongWay() : districtName(s.pack, s.path[visit + 1])
-    return `«Видел подозрительного человека ${roundsAgo(s.round - visit)}. Ушёл в сторону района «${went}».» ${traitPhrase(s, lie)}`
+
+  if (!saw) {
+    return { text: `«Говорят, он подался в район «${districtName(s.pack, pick(s.pack.districts).id)}».»`, lied: true }
   }
-  return `«Сам я никого не видел, но люди говорят…» ${traitPhrase(s, lie)}`
+  const when = w.wrongTime ? roundsAgo(Math.floor(Math.random() * 3) + 1) : roundsAgo(s.round - visit)
+  if (nowHere && !lie) return { text: '«Он всё ещё где-то здесь, я видел его совсем недавно!»', lied: false }
+  const truthWay = nowHere ? d : s.path[visit + 1]
+  const way = lie ? pick(neighbors(s.pack, d).filter((n) => n !== truthWay)) ?? truthWay : truthWay
+  const where = way === d ? 'никуда не ушёл, крутился здесь' : `ушёл в сторону района «${districtName(s.pack, way)}»`
+  return { text: `«Видел его ${when}, он ${where}.»`, lied: lie || (w.wrongTime ?? false) }
 }
 
 const inspect = (s: GameState, d: string): string => {
   const parts: string[] = []
-  if (d === s.crimeScene) {
-    const found = s.clues.filter((c) => c.kind === 'inspect' && c.districtId === d).length
-    const trait = s.pack.traits[found % s.pack.traits.length]
-    parts.push(`Улика с места преступления. ${trait.label}: ${culprit(s).traits[trait.id]}.`)
-  }
   const visit = lastVisit(s, d)
-  if (currentPosition(s) === d) parts.push('Свежие следы! Беглец прямо сейчас где-то в этом районе.')
-  else if (visit > 0) parts.push(`Следы беглеца: он был здесь ${roundsAgo(s.round - visit)}.`)
-  else if (d !== s.crimeScene) parts.push('Никаких следов.')
-  return parts.join(' ')
+  if (here(s) === d) parts.push('Свежие следы! Беглец прямо сейчас в этом районе.')
+  else if (visit >= 0) parts.push(`Следы беглеца: он был здесь ${roundsAgo(s.round - visit)}.`)
+  if (s.evidence[d]) parts.push(`Улика: ${s.evidence[d]}`)
+  return parts.length > 0 ? parts.join(' ') : 'Ни следов, ни улик.'
 }
 
-export const canPatrol = (s: GameState): boolean => s.patrols.length < MAX_PATROLS
+export interface Action {
+  kind: ActionKind
+  district: string
+  question?: Question
+  movePatrolFrom?: string // переставить патруль из этого района
+}
 
-export const applyAction = (s: GameState, kind: ActionKind, d: string): GameState => {
-  const next: GameState = { ...s, clues: [...s.clues], patrols: [...s.patrols] }
-  let text: string
-  if (kind === 'interrogate') {
-    text = `${s.witnessByDistrict[d]}: ${interrogate(s, d)}`
-  } else if (kind === 'inspect') {
-    text = inspect(s, d)
-  } else if (currentPosition(s) === d) {
-    next.status = 'caught'
-    text = 'Патруль задержал беглеца! Теперь назовите виновного.'
-  } else {
-    next.patrols.push(d)
-    text = 'Патруль занял район. Беглец больше не сможет сюда войти.'
+export const canPlacePatrol = (s: GameState): boolean => s.patrols.length < MAX_PATROLS
+
+export const applyAction = (s: GameState, a: Action): GameState => {
+  const next: GameState = {
+    ...s,
+    patrols: [...s.patrols],
+    evidence: { ...s.evidence },
+    searchedAt: { ...s.searchedAt, [a.district]: s.round },
+    lies: [...s.lies],
   }
-  next.clues.push({ round: s.round, kind, districtId: d, text })
+  const name = districtName(s.pack, a.district)
+  let entry: Entry
+  if (a.kind === 'interrogate') {
+    const w = witnessIn(s.pack, a.district)!
+    const q = a.question ?? 'who'
+    const { text, lied } = interrogate(s, a.district, q)
+    if (lied && !next.lies.includes(w.name)) next.lies.push(w.name)
+    entry = { round: s.round, district: a.district, icon: '🗣', title: `${w.name}, ${name} · ${QUESTIONS[q]}`, text }
+  } else if (a.kind === 'inspect') {
+    entry = { round: s.round, district: a.district, icon: '🔍', title: `Осмотр: ${name}`, text: inspect(s, a.district) }
+    delete next.evidence[a.district]
+  } else {
+    if (a.movePatrolFrom) next.patrols = next.patrols.filter((p) => p !== a.movePatrolFrom)
+    next.patrols.push(a.district)
+    const from = a.movePatrolFrom ? ` (снят из района «${districtName(s.pack, a.movePatrolFrom)}»)` : ''
+    entry = { round: s.round, district: a.district, icon: '🚓', title: `Патруль: ${name}`, text: `Беглец не сможет войти в этот район${from}.` }
+  }
+  next.log = [...s.log, entry]
   return next
 }
 
 export const endRound = (s: GameState): GameState => {
   if (s.status !== 'playing') return s
-  if (s.round >= MAX_ROUNDS) {
-    return { ...s, status: 'lost', endReason: 'Время вышло: беглец покинул город.' }
+  if (s.round >= s.pack.rounds) {
+    return { ...s, status: 'lost', endReason: 'Время вышло: преступник покинул город.' }
   }
-  const next: GameState = { ...s, path: [...s.path] }
-  next.path.push(moveFugitive(next, currentPosition(s)))
-  next.round = s.round + 1
-  return next
+  return startRound({ ...s, round: s.round + 1 })
 }
 
-export const accuse = (s: GameState, suspectId: string): GameState =>
-  suspectId === s.culpritId
-    ? { ...s, status: 'won', endReason: 'Беглец пойман и опознан. Дело закрыто!' }
-    : { ...s, status: 'lost', endReason: `Задержали не того. Настоящий преступник — ${culprit(s).name}.` }
+export const starsFor = (round: number, rounds: number): number =>
+  round <= Math.ceil(rounds / 3) ? 3 : round <= Math.ceil((rounds * 2) / 3) ? 2 : 1
+
+export const arrest = (s: GameState, suspectId: string, district: string): GameState => {
+  const rightPerson = suspectId === s.culpritId
+  const rightPlace = district === here(s)
+  if (rightPerson && rightPlace) {
+    return { ...s, status: 'won', stars: starsFor(s.round, s.pack.rounds), endReason: 'Преступник арестован. Дело закрыто!' }
+  }
+  const reason = !rightPerson
+    ? `Арестовали не того. Настоящий преступник — ${culprit(s).name}.`
+    : `Это был он, но в районе «${districtName(s.pack, district)}» его не оказалось. Он прятался в районе «${districtName(s.pack, here(s))}».`
+  return { ...s, status: 'lost', endReason: reason }
+}
+
