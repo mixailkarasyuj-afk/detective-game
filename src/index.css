@@ -1877,3 +1877,52 @@ button.big {
   font-weight: 700;
   text-align: right;
 }
+
+/* События и перехват */
+
+.roadblock rect {
+  fill: #f4ead0;
+  stroke: var(--brick);
+  stroke-width: 0.5;
+}
+
+.roadblock path {
+  stroke: var(--brick);
+  stroke-width: 0.7;
+}
+
+.district.is-dark .plate {
+  fill: #5a5448;
+}
+
+.district.is-dark .glyph {
+  color: #2a261f;
+}
+
+.rumor.event .tag {
+  background: rgb(208 96 63 / 0.18);
+  color: #f0a58f;
+}
+
+.event-text {
+  font-size: 1.05rem;
+}
+
+.chase-panel {
+  border-color: var(--brick);
+  animation: shake 0.4s ease-in-out 2;
+}
+
+.chase-panel h2 {
+  color: var(--brick);
+  font-size: 2rem;
+}
+
+@keyframes shake {
+  25% {
+    transform: translateX(-4px);
+  }
+  75% {
+    transform: translateX(4px);
+  }
+}

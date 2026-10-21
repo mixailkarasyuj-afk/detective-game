@@ -6,6 +6,7 @@ import {
   arrest,
   canPlacePatrol,
   culprit,
+  intercept,
   districtName,
   endRound,
   leadPlayer,
@@ -50,7 +51,8 @@ export function Game({ pack, players, onExit }: Props) {
   const [line, setLine] = useState<{ text: string; witness?: Witness }>(() => ({ text: `${say('intro')} ${game.crime.text}` }))
   const [intro, setIntro] = useState(true)
 
-  const finished = game.status !== 'playing'
+  const finished = game.status === 'won' || game.status === 'lost'
+  const chasing = game.status === 'chase'
   const roundEntries = game.log.filter((e) => e.round === game.round)
 
   const act = (a: Action, comment: keyof typeof LINES) => {
@@ -74,6 +76,12 @@ export function Game({ pack, players, onExit }: Props) {
     const result = arrest(game, suspect, district)
     setGame(result)
     setMode(null)
+    setLine({ text: result.status === 'chase' ? say('chase') : result.status === 'won' ? say('win') : say('lose') })
+  }
+
+  const block = (d: string) => {
+    const result = intercept(game, d)
+    setGame(result)
     setLine({ text: result.status === 'won' ? say('win') : say('lose') })
   }
 
@@ -88,7 +96,9 @@ export function Game({ pack, players, onExit }: Props) {
   }
 
   const selectable = (d: string): boolean => {
+    if (chasing) return game.exits.includes(d)
     if (!mode || finished) return false
+    if (mode.kind === 'inspect') return d !== game.blackout
     if (mode.kind === 'patrol') {
       if (!mode.district) return !game.patrols.includes(d)
       return game.patrols.includes(d)
@@ -98,6 +108,7 @@ export function Game({ pack, players, onExit }: Props) {
   }
 
   const onMap = (d: string) => {
+    if (chasing) return block(d)
     if (!mode) return
     if (mode.kind === 'inspect') act({ kind: 'inspect', district: d }, 'inspect')
     else if (mode.kind === 'interrogate') setMode({ ...mode, district: d })
@@ -135,7 +146,9 @@ export function Game({ pack, players, onExit }: Props) {
             patrols={game.patrols}
             marked={roundEntries.flatMap((e) => (e.district ? [e.district] : []))}
             trails={game.log.flatMap((e) => (e.trail && e.district ? [e.district] : []))}
-            revealPath={finished ? game.path.slice(0, game.round + 1) : undefined}
+            revealPath={finished ? game.path : undefined}
+            closedRoads={game.closedRoads.filter((r) => r.until >= game.round).map((r) => r.road)}
+            blackout={game.blackout}
             selectable={selectable}
             onSelect={onMap}
           />
@@ -153,7 +166,21 @@ export function Game({ pack, players, onExit }: Props) {
             <CommissarSays text={line.text} />
           )}
 
-          {!finished && (
+          {chasing && (
+            <section className="turn chase-panel">
+              <h2>Перехват!</h2>
+              <p>
+                Это он, и он здесь, но у беглеца остались открытые улицы. Он уже рванул к одной из них. Выберите на
+                карте, куда бросить последний заслон.
+              </p>
+              <p className="muted">
+                Открытые выходы: {game.exits.map((d) => `«${districtName(pack, d)}»`).join(', ')}. В следующий раз
+                перекройте их патрулями заранее.
+              </p>
+            </section>
+          )}
+
+          {!finished && !chasing && (
             <section className="turn">
               <div className="turn-head">
                 <span>
@@ -161,13 +188,18 @@ export function Game({ pack, players, onExit }: Props) {
                 </span>
                 <DiscussionTimer key={game.round} />
               </div>
+              {game.event && (
+                <p className="rumor event">
+                  <span className="tag">{game.event.title}</span> {game.event.text}
+                </p>
+              )}
               <p className="rumor">
                 <span className="tag">Слухи</span> {game.rumor}
               </p>
 
-              {done < 2 && !mode && (
+              {done < game.actions && !mode && (
                 <>
-                  <p className="prompt">Действие {done + 1} из 2. Можно выбрать одно и то же дважды.</p>
+                  <p className="prompt">Действие {done + 1} из {game.actions}. Можно выбрать одно и то же дважды.</p>
                   <div className="action-buttons">
                     {ACTIONS.map((a) => (
                       <button key={a.kind} className="action" onClick={() => setMode({ kind: a.kind })}>
@@ -218,7 +250,7 @@ export function Game({ pack, players, onExit }: Props) {
                 />
               )}
 
-              {done >= 2 && (
+              {done >= game.actions && (
                 <div className="round-end">
                   <p>Ход сделан. Беглец решает, куда двинуться…</p>
                   <button className="primary" onClick={nextRound}>
@@ -308,8 +340,20 @@ function RoundIntro({ game, onClose }: { game: GameState; onClose: () => void })
             Происшествие: {game.crime.title}. Место — {districtName(game.pack, game.crimeScene)}.
           </p>
         )}
-        <h3 className="headline">{game.rumor}</h3>
-        <p className="byline">Слухи с улиц. Редакция за достоверность не ручается.</p>
+        {game.event ? (
+          <>
+            <h3 className="headline">{game.event.title}</h3>
+            <p className="event-text">{game.event.text}</p>
+            <p className="byline">
+              <b>Слухи.</b> {game.rumor} <i>Редакция за достоверность не ручается.</i>
+            </p>
+          </>
+        ) : (
+          <>
+            <h3 className="headline">{game.rumor}</h3>
+            <p className="byline">Слухи с улиц. Редакция за достоверность не ручается.</p>
+          </>
+        )}
         <div className="newspaper-foot">
           <span>
             Ведущий следователь: <b>{leadPlayer(game)}</b>
@@ -424,7 +468,7 @@ function ArrestPanel({
   return (
     <div className="arrest-panel">
       <p>
-        Попытка одна на всю игру. Выберите подозреваемого и район на карте, где его брать.
+        Попытка одна на всю игру. Выберите подозреваемого и район, где его брать. Если из района останутся улицы без патруля, он побежит, и перехватить его будет непросто.
       </p>
       <div className="arrest-suspects">
         {suspectsOf(game).map((p) => (
@@ -473,7 +517,6 @@ function Ending({ game, onRestart, onExit }: { game: GameState; onRestart: () =>
           <p className="muted">
             Маршрут беглеца:{' '}
             {game.path
-              .slice(0, game.round + 1)
               .map((id) => districtName(game.pack, id))
               .join(' → ')}
             .

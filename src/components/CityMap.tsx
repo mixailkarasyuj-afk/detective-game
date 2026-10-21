@@ -10,6 +10,8 @@ interface Props {
   marked: string[] // районы, где команда действовала в этом раунде
   trails: string[] // районы, где нашли следы беглеца
   revealPath?: string[] // маршрут беглеца после партии
+  closedRoads?: [string, string][]
+  blackout?: string
   selectable: (districtId: string) => boolean
   onSelect: (districtId: string) => void
 }
@@ -96,7 +98,7 @@ function DecorShape({ d }: { d: Decor }) {
   )
 }
 
-export function CityMap({ pack, crimeScene, patrols, marked, trails, revealPath, selectable, onSelect }: Props) {
+export function CityMap({ pack, crimeScene, patrols, marked, trails, revealPath, closedRoads = [], blackout, selectable, onSelect }: Props) {
   const pos = Object.fromEntries(pack.districts.map((d) => [d.id, d]))
   const anySelectable = pack.districts.some((d) => selectable(d.id))
   const decor = useMemo(() => buildDecor(pack), [pack])
@@ -136,6 +138,16 @@ export function CityMap({ pack, crimeScene, patrols, marked, trails, revealPath,
       {pack.roads.map(([a, b]) => (
         <line key={a + b} className="road" x1={pos[a].x} y1={pos[a].y} x2={pos[b].x} y2={pos[b].y} />
       ))}
+      {closedRoads.map(([a, b]) => {
+        const x = (pos[a].x + pos[b].x) / 2
+        const y = (pos[a].y + pos[b].y) / 2
+        return (
+          <g key={`c${a}${b}`} className="roadblock" transform={`translate(${x} ${y})`}>
+            <rect x={-4} y={-1.3} width={8} height={2.6} rx={0.6} />
+            <path d="M-3 -1.3l1.6 2.6M0 -1.3l1.6 2.6M3 -1.3l1.6 2.6" />
+          </g>
+        )
+      })}
       {revealPath && (
         <polyline
           className="escape-path"
@@ -162,6 +174,7 @@ export function CityMap({ pack, crimeScene, patrols, marked, trails, revealPath,
           patrols.includes(d.id) && 'is-patrol',
           marked.includes(d.id) && 'is-marked',
           canPick && 'is-selectable',
+          d.id === blackout && 'is-dark',
         ]
           .filter(Boolean)
           .join(' ')
